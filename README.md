@@ -5,7 +5,8 @@ Il permet la **visualisation des parcelles**, la **recherche**, le **filtrage** 
 
 ---
 
-## Fonctionnalités
+## 1. Fonctionnalités
+
 - Cartographie des parcelles (polygones)
 - API GeoJSON avec Django REST Framework
 - Recherche de parcelle (numéro / propriétaire)
@@ -16,46 +17,58 @@ Il permet la **visualisation des parcelles**, la **recherche**, le **filtrage** 
 
 ---
 
-## Prérequis
+## 2. Prérequis
 
-Avant de lancer le projet, assurez-vous d’avoir :
-
-#1️⃣ Python
-- Python **3.11 ou 3.12**
-```bash
-python --version
-
- #2️⃣ PostgreSQL + PostGIS
-
-PostgreSQL 14+
-
-Extension PostGIS activée
-
-CREATE DATABASE sig_db;
-\c django
-CREATE EXTENSION postgis;
-
-#3️⃣ Librairies SIG (obligatoire pour GeoDjango)
+### 2.1. Librairies SIG (obligatoire pour GeoDjango)
 
 Sous Windows :
 
-Installer OSGeo4W
+Télécharger Installer OSGeo4W depuis https://download.osgeo.org/osgeo4w/v2/osgeo4w-setup.exe
 
 ##Cocher :
 GDAL,GEOS,PROJ
-## Installation du projet
-Étape 1 — Cloner le dépôt
+Avant de lancer le projet, assurez-vous d’avoir :
+
+### 2.2. PostgreSQL + PostGIS
+
+Installer postgresql ensuite postgis avec le stackbuilder
+
+Activer l'Extension PostGIS
+
+CREATE DATABASE sig_db;
+\c django
+CREATE EXTENSION *postgis;*
+
+### 2.3. Python 
+
+- Python **3.11 ou 3.12**
+
+```bash
+python --version;
+```
+
+## 3. Installation du projet
+
+**Étape 1 — Cloner le dépôt depuis GITHUBE**
+
+```
 git clone https://github.com/geomatic-web/Sig-Django.git
 cd Sig-Django
-Étape 2 — Créer et activer l’environnement virtuel
+```
+
+**Étape 2 — Créer et activer l’environnement virtuel**
+
 python -m venv env
 env\Scripts\activate | Vous devez voir :(env) en vert
-Étape 3 — Installer les dépendances
+
+**Étape 3 — Installer les dépendances**
 pip install -r requirements.txt
 
-## Configuration
-Étape 4 — Fichier .env
+### 4. Configuration
 
+**Étape 4 — Fichier settings.py**
+
+```
 Modifier cette partie du fichier settings.py pour correspondre à votre base de données :
 
 DATABASES = {
@@ -68,21 +81,34 @@ DATABASES = {
         'PORT': '5432',               # port PostgreSQL par défaut
     }
 }
+```
 
-🗄️ Base de données
-Étape 6 — Migrations
+### 5. Base de données
+
+**Étape 6 — Migrations**
+
+```
 python manage.py makemigrations
 python manage.py migrate
-Étape 7 — Créer un super utilisateur
+
+```
+
+**Étape 7 — Créer un super utilisateur**
 python manage.py createsuperuser
-Lancement du projet
+
+#   6. Lancement du projet
+
+```
 python manage.py runserver
 Accès :
 🌐 Application :http://127.0.0.1:8000/
 🔐 Admin Django :http://127.0.0.1:8000/admin
 🔐 Admin Django :http://127.0.0.1:8000/api/parcelles/
+```
 
-Structure du projet
+#  7. Structure du projet
+
+```
 Sig-Django/
 │
 ├── cartographie/
@@ -93,3 +119,4 @@ Sig-Django/
 ├── requirements.txt
 ├── README.md
 ├── .gitignore
+```
