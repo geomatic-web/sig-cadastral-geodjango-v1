@@ -52,7 +52,7 @@ python --version;
 **Étape 1 — Cloner le dépôt depuis GITHUBE**
 
 ```
-git clone https://github.com/geomatic-web/Sig-Django.git
+git clone [https://github.com/geomatic-web/Sig-Django.git](https://github.com/geomatic-web/sig-cadastral-geodjango-v1.git)
 cd Sig-Django
 ```
 
