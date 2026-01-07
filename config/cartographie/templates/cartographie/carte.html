@@ -1,0 +1,256 @@
+<html lang="fr">
+<head>
+<title>ma carte cadastral</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+     
+<style>
+body {
+        margin:0;
+        font-family: Arial,sans-serif;
+        background-color: rgb(249, 242, 249);
+    }
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background: #004080;
+    color: white;
+}
+
+header button {
+    padding: 6px 12px;
+    background: #ffa500;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+}
+
+footer {
+    text-align: center;
+    padding: 10px;
+    background: #004080;
+    color: white;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+}
+
+#searchBox {
+    position: absolute;
+    top: 70px;
+    left: 50px;
+    z-index: 1000;
+    background: white;
+    padding: 8px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+#carte {
+        height: 600px;
+        width: 100%
+     }
+
+
+.legend {
+    background: white;
+    padding: 8px;
+    line-height: 18px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    border-radius: 5px;
+}
+
+.legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.6;
+}
+
+#filters {
+    position: absolute;
+    top: 150px;
+    left: 10px;
+    z-index: 1000;
+    background: white;
+    padding: 8px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+</style>
+
+</head>
+<body>
+<header>
+    <div><h3 style="margin: 0;">BIENVENUE SUR NOTRE PORTAIL CARTOGRAPHIQUE</h3></div>
+    <div><a href="/" style="text-decoration: none;color: #007bff;font-weight: bold;">Acceuil</a></div>
+    <div><button onclick="location.href='/admin'">Se connecter</button></div>
+
+
+</header>
+
+<div id="searchBox">
+    <input type="text" id="searchInput" placeholder="Nom et prenom" style="padding: 6px;width: 180px;">
+    <button onclick="searchParcelle()">Recherche</button>
+</div>
+
+
+<div id="filters">
+    <label>Usage:</label>
+    <select id="usageFilter">
+        <option value="all">Tous</option>
+        <option value="Habitation">Habitation</option>
+        <option value="Commerce">Commerce</option>
+        <option value="Industrie">Industrie</option>
+    </select>
+</div>
+<div id="carte"></div>
+
+<footer>
+    &copy;2025 carte cadstral. Tous droits reservé
+</footer>
+
+<script>
+
+var carte = L.map('carte').setView([12.2544, -1.25548], 7);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 20,
+    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(carte);
+
+var coucheParcelle= null;
+
+//Couche par usage
+
+var layersByUsage={
+    'Habitation':L.layerGroup(),
+    'Commerce':L.layerGroup(),
+    'Industrie':L.layerGroup()
+};
+
+var allLayers=[];
+
+//Création de la symobologie
+function styleParcelle(feature) {
+    switch (feature.properties.usage){
+        case ('Habitation') :
+            return {color: 'green', weight:2,fillOpacity:0.4};
+        case ('Commerce') :
+            return {color: 'blue', weight:2,fillOpacity:0.4};
+        case ('Industrie'): 
+            return {color: 'orange', weight:2,fillOpacity:0.4};
+        
+
+    }
+}
+
+// Fonction affiche les informations de la parcelle au clic
+function onEachFeature (feature,layer) {
+    const p= feature.properties;
+    layer.bindPopup(`
+        <b>Usage:</b> ${p.usage} <br>
+        <b>Superficie:</b> ${p.superficie} <br>
+        <b>Propriétaire:</b> ${p.proprietaire} <br>
+        <b>Contact:</b> ${p.contact} <br>
+    `);
+
+    allLayers.push({layer:layer, usage:p.usage,proprietaire:p.proprietaire});
+
+    if (layersByUsage[p.usage]) {
+        layersByUsage[p.usage].addLayer(layer);
+    }
+
+}
+
+
+//chargement des parcelles depuis notre API accessible à l'adresse api/parcelles
+
+fetch('/api/parcelles')
+    .then (response => response.json())
+    .then (data => {
+        console.log(data);
+        coucheParcelle=L.geoJSON(data, {
+            style:styleParcelle,
+            onEachFeature:onEachFeature
+
+        }).addTo(carte);
+
+    if (data.features && data.features.length >0) {
+
+        const limites =coucheParcelle.getBounds();
+        if (limites.isValid()) {
+            carte.fitBounds(limites, {
+                padding: [20, 20],
+                maxZoom: 18
+            });
+        }
+    }
+
+    })
+
+    .catch(Error => console.error("Erreur lors du zoom qui provient probalement du chargement de votre API parcelles"));
+   
+document.getElementById('usageFilter').addEventListener('change',function() {
+    let selected=this.value;
+    allLayers.forEach(items => {
+
+        carte.removeLayer(items.layer);
+
+        if (selected ==='all' || items.usage ===selected){
+            items.layer.addTo(carte);
+        }
+    });
+
+});
+
+function searchParcelle() {
+    const valeur=document.getElementById('searchInput').value.trim();
+    if (!valeur) {alert("Veuillez saisir le nom et prénom du propriétaire de la parcelle"); return; }
+
+    let trouve=false;
+    allLayers.forEach(items => {
+        if (items.proprietaire && items.proprietaire.toString() === valeur ) {
+            carte.fitBounds(items.layer.getBounds(), {maxZoom:19,padding:[20,20]});
+            items.layer.openPopup();
+            trouve=true;
+        }
+    });
+    if (!trouve) alert("Parcelle non trouvé");
+}
+
+//option de controle des couche
+
+L.control.layers(null,layersByUsage, {
+    collapsed:false,
+    position:'topright'
+
+}).addTo(carte);
+
+
+var legend =L.control({position:'bottomright'});
+
+legend.onAdd=function () {
+    var div= L.DomUtil.create('div','legend');
+    div.innerHTML += '<i style = "background:green"></i> Habitation<br>';
+    div.innerHTML += '<i style = "background:blue"></i> Commerce<br>';
+    div.innerHTML += '<i style = "background:orange"></i> Industrie<br>';
+    return div
+}
+legend.addTo(carte);
+
+</script>
+
+</body>
+
+</html>

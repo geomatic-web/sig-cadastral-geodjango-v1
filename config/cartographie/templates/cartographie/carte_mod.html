@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<title>Carte cadastrale</title>
+
+<meta charset="UTF-8">
+
+<link rel="stylesheet"
+ href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+  #carte {
+    height: 600px;
+    width: 100%;
+  }
+
+  .legend {
+    background: white;
+    padding: 8px;
+    line-height: 18px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    border-radius: 5px;
+  }
+
+  .legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.6;
+  }
+
+  #filters {
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+
+<body>
+
+<h3>Visualisation des parcelles</h3>
+
+<div id="filters">
+  <label>Usage :</label>
+  <select id="usageFilter">
+    <option value="all">Tous</option>
+    <option value="Habitation">Habitation</option>
+    <option value="Commerce">Commerce</option>
+    <option value="Industrie">Industrie</option>
+  </select>
+</div>
+
+<div id="carte"></div>
+
+<script>
+
+// ======================
+// 1. Initialisation carte
+// ======================
+var carte = L.map('carte').setView([12.2544, -1.25548], 7);
+
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 20
+}).addTo(carte);
+
+// ======================
+// 2. Couches par usage
+// ======================
+var layersByUsage = {
+  'Habitation': L.layerGroup(),
+  'Commerce': L.layerGroup(),
+  'Industrie': L.layerGroup()
+};
+
+var allLayers = [];
+
+// ======================
+// 3. Style selon usage
+// ======================
+function styleParcelle(feature) {
+  switch (feature.properties.usage) {
+    case 'Habitation':
+      return { color: 'green', weight: 2, fillOpacity: 0.4 };
+    case 'Commerce':
+      return { color: 'blue', weight: 2, fillOpacity: 0.4 };
+    case 'Industrie':
+      return { color: 'orange', weight: 2, fillOpacity: 0.4 };
+  }
+}
+
+// ======================
+// 4. Popup
+// ======================
+function onEachFeature(feature, layer) {
+  const p = feature.properties;
+
+  layer.bindPopup(`
+    <b>Usage :</b> ${p.usage}<br>
+    <b>Superficie :</b> ${p.superficie}<br>
+    <b>Propriétaire :</b> ${p.proprietaire}<br>
+    <b>Contact :</b> ${p.contact}
+  `);
+
+  allLayers.push({ layer: layer, usage: p.usage });
+
+  if (layersByUsage[p.usage]) {
+    layersByUsage[p.usage].addLayer(layer);
+  }
+}
+
+// ======================
+// 5. Chargement API Django
+// ======================
+fetch('/api/parcelles/')
+  .then(response => response.json())
+  .then(data => {
+
+    const coucheParcelle = L.geoJSON(data, {
+        style: styleParcelle,
+        onEachFeature: onEachFeature
+    }).addTo(carte);
+
+    // ===============================
+    // 🔒 ZOOM — NE PAS MODIFIER
+    // ===============================
+    if (data.features && data.features.length > 0) {
+        const limites = coucheParcelle.getBounds();
+        if (limites.isValid()) {
+            carte.fitBounds(limites, {
+                padding: [20, 20],
+                maxZoom: 18
+            });
+        }
+    }
+  })
+  .catch(err => console.error("Erreur API parcelles", err));
+
+// ======================
+// 6. Filtrage par select
+// ======================
+document.getElementById('usageFilter').addEventListener('change', function () {
+  let selected = this.value;
+
+  allLayers.forEach(item => {
+    carte.removeLayer(item.layer);
+
+    if (selected === 'all' || item.usage === selected) {
+      item.layer.addTo(carte);
+    }
+  });
+});
+
+// ======================
+// 7. Contrôle cocher / décocher
+// ======================
+L.control.layers(null, layersByUsage, {
+  collapsed: false,
+  position: 'topright'
+}).addTo(carte);
+
+// ======================
+// 8. Légende
+// ======================
+var legend = L.control({ position: 'bottomright' });
+
+legend.onAdd = function () {
+  var div = L.DomUtil.create('div', 'legend');
+  div.innerHTML += '<i style="background:green"></i> Habitation<br>';
+  div.innerHTML += '<i style="background:blue"></i> Commerce<br>';
+  div.innerHTML += '<i style="background:orange"></i> Industrie<br>';
+  return div;
+};
+
+legend.addTo(carte);
+
+</script>
+
+</body>
+</html>
